@@ -1,0 +1,385 @@
+{
+  "packet_metadata": {
+    "generated_at": "2026-02-05T09:20:19.656001",
+    "version_hash": "1ee87b8d691d",
+    "format_version": "1.0.0"
+  },
+  "mvp_spec": {
+    "title": "Septage-to-Biochar Processing System - Product Mode",
+    "revision": "1.0",
+    "deployment_mode": "PRODUCT (Owner-Operated)",
+    "system_overview": {
+      "description": "Continuous septage-to-biochar processing system designed for owner-operated deployment at rural waste handling facilities. System converts septage and wood co-feed into marketable biochar while achieving energy self-sufficiency.",
+      "primary_constraint": "Serviceability (not thermodynamics)",
+      "design_philosophy": "Owner-serviceable with minimal contractor callouts"
+    },
+    "scale_parameters": {
+      "annual_septage_m3": 2000,
+      "annual_cofeed_tds": 600,
+      "operating_days_per_year": 250,
+      "operating_hours_per_day": 8
+    },
+    "performance_requirements": {
+      "energy_self_sufficiency": {
+        "value": 1.64,
+        "requirement": ">= 1.0",
+        "unit": "ratio"
+      },
+      "char_production": {
+        "value": 238.4,
+        "unit": "tonnes/year"
+      },
+      "maintenance_cost": {
+        "value": 23264.0,
+        "requirement": "<= 35,000",
+        "unit": "$/year"
+      },
+      "callout_frequency": {
+        "value": 0.12,
+        "requirement": "<= 1.0",
+        "unit": "callouts/week"
+      }
+    },
+    "economic_envelope": {
+      "target_capex": {
+        "value": 2111181.0,
+        "tolerance": "\u00b125%",
+        "unit": "$"
+      },
+      "target_payback": {
+        "value": 14.5,
+        "requirement": "<= 15.0",
+        "unit": "years"
+      },
+      "capex_multiplier": {
+        "value": 0.6,
+        "description": "Product mode vs full-scale hub"
+      }
+    },
+    "subsystem_requirements": {
+      "receiving": {
+        "capacity_m3_hr": 3.0,
+        "operating_window": "Mon-Fri, 8hr/day"
+      },
+      "dewatering": {
+        "type": "Screw press or equivalent",
+        "cake_ts_target": "20% TS",
+        "solids_capture": ">= 95%",
+        "owner_serviceable": true
+      },
+      "drying": {
+        "type": "Indirect heated rotary or paddle",
+        "outlet_moisture": "< 10%",
+        "heat_source": "Syngas combustion",
+        "owner_serviceable": true
+      },
+      "pyrolysis": {
+        "type": "Continuous auger or rotary",
+        "temperature_range": "500-600\u00b0C",
+        "residence_time": "15-30 min",
+        "owner_serviceable": "Partial (seals, discharge)"
+      },
+      "char_handling": {
+        "cooling": "Water-jacketed screw",
+        "storage": "Covered silo with discharge",
+        "owner_serviceable": true
+      },
+      "syngas_system": {
+        "combustion": "Direct-fired to dryer",
+        "backup": "Propane pilot/aux",
+        "flare": "Required for upset conditions"
+      },
+      "controls": {
+        "type": "PLC with HMI",
+        "remote_monitoring": "Required",
+        "safety_systems": "E-stop, gas detection, fire suppression"
+      }
+    },
+    "critical_design_constraints": {
+      "owner_serviceability": "All routine maintenance tasks (< 4hr interval) must be performable by owner with standard tools. Contractor callouts limited to < 1/week average.",
+      "modular_replacement": "High-wear components (auger flights, seals, bearings) must be designed for modular replacement without specialized equipment.",
+      "condition_monitoring": "Vibration, temperature, and torque monitoring required on all rotating equipment. O2 monitoring required on pyrolyzer."
+    }
+  },
+  "fmea_summary": {
+    "summary": {
+      "total_failure_modes": 26,
+      "critical_count": 0,
+      "moderate_count": 17,
+      "acceptable_count": 9,
+      "average_rpn": 58.0,
+      "owner_serviceable_pct": 77.0
+    },
+    "mitigation_status": {
+      "proposed": 26,
+      "implemented": 0,
+      "validated": 0
+    },
+    "critical_modes": [],
+    "high_rpn_modes": [
+      {
+        "component": "Screw Press",
+        "failure_mode": "Screw wear/binding",
+        "rpn": 96,
+        "owner_serviceable": true
+      },
+      {
+        "component": "Pyrolyzer Auger",
+        "failure_mode": "Auger seizure",
+        "rpn": 96,
+        "owner_serviceable": false
+      },
+      {
+        "component": "Char Discharge Valve",
+        "failure_mode": "Valve sticking",
+        "rpn": 96,
+        "owner_serviceable": true
+      },
+      {
+        "component": "Pyrolyzer Seals",
+        "failure_mode": "Seal degradation",
+        "rpn": 84,
+        "owner_serviceable": true
+      },
+      {
+        "component": "Heat Exchanger",
+        "failure_mode": "Tube fouling",
+        "rpn": 80,
+        "owner_serviceable": true
+      }
+    ],
+    "vendor_attention_required": "The following components require vendor confirmation of MTBF, spare parts availability, and maintenance procedures: Receiving Tank Level Sensor, Receiving Tank Mixer, Polymer Dosing Pump, Screw Press, Receiving Pump"
+  },
+  "gate_report": {
+    "status": "PASS",
+    "gates_passed": 4,
+    "gates_total": 4,
+    "frozen_constraints": {
+      "max_maintenance_budget": "$35,000/year",
+      "max_payback_years": "15.0 years",
+      "max_callouts_per_week": "1.0",
+      "energy_self_sufficiency": ">= 100%"
+    },
+    "gate_results": [
+      {
+        "name": "Maintenance Budget",
+        "status": "PASS",
+        "value": 23264.0,
+        "threshold": 35000
+      },
+      {
+        "name": "Payback Period",
+        "status": "PASS",
+        "value": 14.54,
+        "threshold": 15.0
+      },
+      {
+        "name": "Callout Frequency",
+        "status": "PASS",
+        "value": 0.12,
+        "threshold": 1.0
+      },
+      {
+        "name": "Energy Self-Sufficiency",
+        "status": "PASS",
+        "value": 1.64,
+        "threshold": 1.0
+      }
+    ],
+    "enforcement_statement": "These gates are enforced automatically in CI. Any design change that violates these constraints will be rejected. Vendor equipment that cannot meet these requirements is not suitable for this application."
+  },
+  "drl_report": {
+    "achieved_level": 3,
+    "phase": "Concept",
+    "description": "Analytical/experimental proof of concept",
+    "criteria_summary": {
+      "total": 17,
+      "passing": 6,
+      "failing": 11
+    },
+    "blocking_for_next_level": [
+      {
+        "criterion": "dewatering_params_validated",
+        "description": "Dewatering performance validated with bench tests",
+        "required_for_drl": 4
+      },
+      {
+        "criterion": "pyrolysis_yields_validated",
+        "description": "Pyrolysis yields validated with lab tests",
+        "required_for_drl": 4
+      }
+    ],
+    "interpretation": "The system is at DRL-3, meaning the design is analytically validated but awaiting empirical confirmation. Advancement to DRL-4 requires vendor/lab data for 2 validation tasks."
+  },
+  "validation_tasks": {
+    "summary": {
+      "total_tasks": 4,
+      "validated": 0,
+      "not_started": 4
+    },
+    "tasks_by_drl": {
+      "4": [
+        {
+          "task_id": "dewatering_params_validated",
+          "name": "Dewatering Performance Validation",
+          "description": "Validate dewatering unit performance against model assumptions. Requires bench-scale testing with representative septage samples.",
+          "data_type": "bench_test",
+          "status": "not_started",
+          "acceptance_criteria": [
+            {
+              "parameter": "cake_ts_fraction",
+              "description": "Cake total solids fraction (dry basis)",
+              "expected_value": 0.2,
+              "min_value": 0.18,
+              "max_value": 0.25,
+              "tolerance_pct": 15,
+              "unit": "fraction"
+            },
+            {
+              "parameter": "solids_capture",
+              "description": "Solids capture efficiency",
+              "expected_value": 0.95,
+              "min_value": 0.9,
+              "max_value": 1.0,
+              "tolerance_pct": 5,
+              "unit": "fraction"
+            },
+            {
+              "parameter": "polymer_kg_per_tds",
+              "description": "Polymer consumption per tonne dry solids",
+              "expected_value": 5.0,
+              "min_value": 3.0,
+              "max_value": 8.0,
+              "tolerance_pct": 30,
+              "unit": "kg/TDS"
+            },
+            {
+              "parameter": "power_kwh_per_m3",
+              "description": "Power consumption per cubic meter processed",
+              "expected_value": 2.0,
+              "min_value": 1.0,
+              "max_value": 4.0,
+              "tolerance_pct": 50,
+              "unit": "kWh/m\u00b3"
+            }
+          ],
+          "notes": "Requires 3+ batch tests with septage from target service area."
+        },
+        {
+          "task_id": "pyrolysis_yields_validated",
+          "name": "Pyrolysis Yield Validation",
+          "description": "Validate pyrolysis product yields against model assumptions. Requires lab-scale pyrolysis testing with dewatered cake samples.",
+          "data_type": "lab_test",
+          "status": "not_started",
+          "acceptance_criteria": [
+            {
+              "parameter": "char_yield_septage",
+              "description": "Char yield from septage (dry basis)",
+              "expected_value": 0.467,
+              "min_value": 0.35,
+              "max_value": 0.55,
+              "tolerance_pct": 15,
+              "unit": "kg char/kg TDS"
+            },
+            {
+              "parameter": "char_yield_cofeed",
+              "description": "Char yield from wood co-feed (dry basis)",
+              "expected_value": 0.35,
+              "min_value": 0.25,
+              "max_value": 0.45,
+              "tolerance_pct": 15,
+              "unit": "kg char/kg TDS"
+            },
+            {
+              "parameter": "syngas_yield_septage",
+              "description": "Syngas energy yield from septage",
+              "expected_value": 3.2,
+              "min_value": 2.5,
+              "max_value": 4.5,
+              "tolerance_pct": 20,
+              "unit": "MJ/kg TDS"
+            },
+            {
+              "parameter": "syngas_yield_cofeed",
+              "description": "Syngas energy yield from wood co-feed",
+              "expected_value": 5.4,
+              "min_value": 4.0,
+              "max_value": 6.5,
+              "tolerance_pct": 15,
+              "unit": "MJ/kg TDS"
+            }
+          ],
+          "notes": "Pyrolysis at 500-600\u00b0C, residence time 15-30 min. Test both septage-only and co-feed blends."
+        }
+      ],
+      "6": [
+        {
+          "task_id": "capex_vendor_validated",
+          "name": "CAPEX Vendor Validation",
+          "description": "Validate CAPEX estimates with actual vendor quotes. Requires budgetary quotes from equipment vendors.",
+          "data_type": "vendor_spec",
+          "status": "not_started",
+          "acceptance_criteria": [
+            {
+              "parameter": "total_capex",
+              "description": "Total system CAPEX",
+              "expected_value": 1200000,
+              "min_value": 800000,
+              "max_value": 1600000,
+              "tolerance_pct": 25,
+              "unit": "$"
+            },
+            {
+              "parameter": "capex_multiplier_product",
+              "description": "Product mode CAPEX multiplier vs full scale",
+              "expected_value": 0.6,
+              "min_value": 0.5,
+              "max_value": 0.75,
+              "tolerance_pct": 15,
+              "unit": "fraction"
+            }
+          ],
+          "notes": "Requires quotes for: dewatering, dryer, pyrolyzer, char handling, controls."
+        },
+        {
+          "task_id": "maintenance_model_validated",
+          "name": "Maintenance Model Validation",
+          "description": "Validate maintenance cost and callout frequency assumptions. Requires vendor maintenance schedules and spare parts pricing.",
+          "data_type": "vendor_spec",
+          "status": "not_started",
+          "acceptance_criteria": [
+            {
+              "parameter": "annual_maintenance_cost",
+              "description": "Total annual maintenance cost",
+              "expected_value": 23000,
+              "min_value": 15000,
+              "max_value": 35000,
+              "tolerance_pct": 30,
+              "unit": "$/year"
+            },
+            {
+              "parameter": "callouts_per_year",
+              "description": "Expected contractor callouts per year",
+              "expected_value": 26,
+              "min_value": 10,
+              "max_value": 52,
+              "tolerance_pct": 50,
+              "unit": "callouts/year"
+            },
+            {
+              "parameter": "owner_serviceable_pct",
+              "description": "Percentage of tasks owner can perform",
+              "expected_value": 0.85,
+              "min_value": 0.7,
+              "max_value": 1.0,
+              "tolerance_pct": 10,
+              "unit": "fraction"
+            }
+          ],
+          "notes": "Cross-reference with FMEA failure modes and MTTR estimates."
+        }
+      ]
+    },
+    "vendor_action_required": "Vendors are requested to provide data demonstrating that their equipment meets the acceptance criteria listed below. Data must include test methodology, sample characteristics, and measured values."
+  }
+}

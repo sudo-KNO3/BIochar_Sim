@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OvernightOperationResponse",
+  "description": "Vendor response to overnight/unattended operation follow-up questions",
+  "type": "object",
+  "required": ["vendor_id", "packet_hash", "date_received"],
+  "properties": {
+    "vendor_id": { "type": "string" },
+    "packet_hash": { "type": "string", "pattern": "^[a-f0-9]{12}$" },
+    "date_received": { "type": "string", "format": "date" },
+
+    "hold_mode": {
+      "type": "object",
+      "properties": {
+        "supported": { "type": "boolean" },
+        "type": {
+          "type": "string",
+          "enum": ["hot_hold", "controlled_cooldown", "inert_purge_required", "not_supported"]
+        },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "overnight_thermal": {
+      "type": "object",
+      "properties": {
+        "continuous_heat_required": { "type": "boolean" },
+        "min_temp_c": { "type": ["number", "null"] },
+        "risks_if_cooled": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["tar_condensation", "plugging", "corrosion", "refractory_damage", "none"]
+          }
+        }
+      }
+    },
+
+    "auto_shutdown": {
+      "type": "object",
+      "properties": {
+        "supported": { "type": "boolean" },
+        "philosophy": {
+          "type": "string",
+          "enum": ["alarm_only", "auto_rampdown", "auto_shutdown", "hybrid"]
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "parameter": { "type": "string" },
+              "action": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "restart": {
+      "type": "object",
+      "properties": {
+        "time_hot_hold_hr": { "type": ["number", "null"] },
+        "time_warm_standby_hr": { "type": ["number", "null"] },
+        "time_cold_shutdown_hr": { "type": ["number", "null"] },
+        "operator_presence": {
+          "type": "string",
+          "enum": ["init_only", "continuous", "remote_ok"]
+        }
+      }
+    },
+
+    "reference_installations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "location": { "type": "string" },
+          "feedstock": { "type": "string" },
+          "throughput_tpd": { "type": "number" },
+          "temp_range_c": { "type": "string" },
+          "daytime_only_staffing": { "type": "boolean" }
+        }
+      }
+    },
+
+    "raw_response_text": { "type": "string" },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low", "vendor_unclear"]
+    }
+  }
+}

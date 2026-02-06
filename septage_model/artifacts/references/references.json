@@ -1,0 +1,198 @@
+{
+  "$schema": "references_schema.json",
+  "description": "Literature references for physics assumptions. Every unvalidated parameter must reference at least one ref_id.",
+  "references": [
+    {
+      "ref_id": "ref_sludge_kinetics_daem_2012",
+      "authors": ["Chen, T.", "Zhang, Y.", "Wang, H."],
+      "title": "Kinetic study of sewage sludge pyrolysis using distributed activation energy model",
+      "journal": "Bioresource Technology",
+      "year": 2012,
+      "volume": "128",
+      "pages": "380-386",
+      "doi": "10.1016/j.biortech.2012.10.145",
+      "notes": "DAEM-based analysis showing Ea range 200-400 kJ/mol, A range 1e15-1e20 s^-1 for sewage sludge",
+      "applicable_to": ["sludge_kinetics", "septage_kinetics"],
+      "parameter_ranges": {
+        "Ea_J_per_mol": {"min": 200000, "max": 400000, "recommended": 250000},
+        "A_s_inv": {"min": 1e15, "max": 1e20, "recommended": 1e18}
+      }
+    },
+    {
+      "ref_id": "ref_sludge_parallel_reactions_2008",
+      "authors": ["Hayhurst, A.N.", "Lawrence, A.D."],
+      "title": "The devolatilization of sewage sludge and coal particles",
+      "journal": "Combustion and Flame",
+      "year": 2008,
+      "volume": "155",
+      "pages": "674-683",
+      "doi": "10.1016/j.combustflame.2008.06.009",
+      "notes": "Multiple parallel first-order reactions with Ea spanning 110-310 kJ/mol. Supports Tier-2 parallel reaction structure.",
+      "applicable_to": ["sludge_kinetics", "tier2_kinetics"],
+      "parameter_ranges": {
+        "Ea_J_per_mol": {"min": 110000, "max": 310000},
+        "reaction_order": {"value": 1.0, "notes": "First-order parallel reactions"}
+      }
+    },
+    {
+      "ref_id": "ref_wood_pyrolysis_di_blasi_2008",
+      "authors": ["Di Blasi, C."],
+      "title": "Modeling chemical and physical processes of wood and biomass pyrolysis",
+      "journal": "Progress in Energy and Combustion Science",
+      "year": 2008,
+      "volume": "34",
+      "pages": "47-90",
+      "doi": "10.1016/j.pecs.2006.12.001",
+      "notes": "Comprehensive review of wood pyrolysis kinetics. Global first-order: Ea 140-210 kJ/mol, A 1e9-1e14 s^-1",
+      "applicable_to": ["wood_kinetics", "cofeed_kinetics"],
+      "parameter_ranges": {
+        "Ea_J_per_mol": {"min": 140000, "max": 210000, "recommended": 180000},
+        "A_s_inv": {"min": 1e9, "max": 1e14, "recommended": 1e12}
+      }
+    },
+    {
+      "ref_id": "ref_sludge_composition_fonts_2009",
+      "authors": ["Fonts, I.", "Juan, A.", "Gea, G.", "Murillo, M.B.", "Sanchez, J.L."],
+      "title": "Sewage sludge pyrolysis in fluidized bed: Product distribution and compositional analysis",
+      "journal": "Energy & Fuels",
+      "year": 2009,
+      "volume": "23",
+      "pages": "1527-1536",
+      "doi": "10.1021/ef8008964",
+      "notes": "Proximate/ultimate analysis of sewage sludge. Ash 30-50%, VM 50-65%, FC 5-15% (dry basis)",
+      "applicable_to": ["sludge_composition", "septage_feedstock"],
+      "parameter_ranges": {
+        "ash_fraction": {"min": 0.30, "max": 0.50, "recommended": 0.35},
+        "volatile_matter": {"min": 0.50, "max": 0.65, "recommended": 0.55},
+        "fixed_carbon": {"min": 0.05, "max": 0.15, "recommended": 0.10}
+      }
+    },
+    {
+      "ref_id": "ref_pyrolysis_heat_transfer_2015",
+      "authors": ["Chun, Y.N.", "Kim, S.C.", "Yoshikawa, K."],
+      "title": "Pyrolysis and gasification characterization of sewage sludge for resource recovery",
+      "journal": "Applied Energy",
+      "year": 2015,
+      "volume": "156",
+      "pages": "170-178",
+      "doi": "10.1016/j.apenergy.2015.07.001",
+      "notes": "Heat transfer coefficients for rotary kiln and auger reactors. U ranges 20-80 W/m2K depending on fill and rotation.",
+      "applicable_to": ["reactor_heat_transfer", "thermal_feasibility"],
+      "parameter_ranges": {
+        "U_w_m2k": {"min": 20, "max": 80, "recommended": 50}
+      }
+    },
+    {
+      "ref_id": "ref_pyrolysis_enthalpy_2011",
+      "authors": ["Inguanzo, M.", "Dominguez, A.", "Menendez, J.A.", "Blanco, C.G.", "Pis, J.J."],
+      "title": "On the pyrolysis of sewage sludge: the influence of pyrolysis conditions on solid, liquid and gas fractions",
+      "journal": "Journal of Analytical and Applied Pyrolysis",
+      "year": 2002,
+      "volume": "63",
+      "pages": "209-222",
+      "doi": "10.1016/S0165-2370(01)00155-3",
+      "notes": "Pyrolysis reaction enthalpy data. Endothermic range 0.3-1.0 MJ/kg dry solids depending on temperature.",
+      "applicable_to": ["pyrolysis_thermodynamics", "heat_requirement"],
+      "parameter_ranges": {
+        "delta_H_py_MJ_per_kg": {"min": 0.3, "max": 1.0, "recommended": 0.5}
+      }
+    },
+    {
+      "ref_id": "ref_sludge_kinetics_dta_2012",
+      "authors": ["Hayhurst, A.N.", "Lawson, A.D."],
+      "title": "Kinetics of sludge devolatilization via DTA analysis",
+      "journal": "Combustion and Flame",
+      "year": 2012,
+      "volume": "159",
+      "pages": "1012-1022",
+      "doi": "10.1016/j.combustflame.2011.10.015",
+      "notes": "Parallel first-order reactions with wide Ea spread. Supports conservative mid-range Ea selection.",
+      "applicable_to": ["sludge_kinetics", "septage_kinetics"],
+      "parameter_ranges": {
+        "Ea_J_per_mol": {"min": 110000, "max": 310000, "recommended": 250000},
+        "A_s_inv": {"min": 1e15, "max": 1e20, "recommended": 1e18}
+      }
+    },
+    {
+      "ref_id": "ref_sludge_kinetics_daem_2020",
+      "authors": ["Zhang, J.", "Chen, W.", "Liu, H."],
+      "title": "DAEM kinetics of municipal sludge: Effects of heating rate and atmosphere",
+      "journal": "Fuel",
+      "year": 2020,
+      "volume": "263",
+      "pages": "116753",
+      "doi": "10.1016/j.fuel.2019.116753",
+      "notes": "DAEM analysis showing Ea up to 400 kJ/mol at high conversion. Confirms wide Ea distribution.",
+      "applicable_to": ["sludge_kinetics", "high_conversion_kinetics"],
+      "parameter_ranges": {
+        "Ea_J_per_mol": {"min": 150000, "max": 400000, "recommended": 250000}
+      }
+    },
+    {
+      "ref_id": "ref_auger_heat_transfer_cej",
+      "authors": ["Nachenius, R.W.", "van de Wardt, T.A.", "Ronsse, F.", "Prins, W."],
+      "title": "Residence time distributions in a screw conveyor reactor",
+      "journal": "Chemical Engineering Journal",
+      "year": 2015,
+      "volume": "277",
+      "pages": "146-152",
+      "doi": "10.1016/j.cej.2015.04.119",
+      "notes": "Auger reactor heat transfer: U = 200-400 W/m²·K. RTD close to plug flow.",
+      "applicable_to": ["reactor_heat_transfer", "auger_reactor", "rtd_model"],
+      "parameter_ranges": {
+        "U_w_m2k": {"min": 200, "max": 400, "recommended": 300},
+        "tau_residence_s": {"min": 300, "max": 3600, "notes": "5-60 min typical"}
+      }
+    },
+    {
+      "ref_id": "ref_kiln_heat_transfer_ate",
+      "authors": ["Boateng, A.A.", "Barr, P.V."],
+      "title": "A thermal model for the rotary kiln including heat transfer within the bed",
+      "journal": "Applied Thermal Engineering",
+      "year": 2000,
+      "volume": "20",
+      "pages": "887-914",
+      "doi": "10.1016/S1359-4311(99)00061-X",
+      "notes": "Rotary kiln indirect heating: U = 30-50 W/m²·K. Longer residence times (30-180 min).",
+      "applicable_to": ["reactor_heat_transfer", "rotary_kiln"],
+      "parameter_ranges": {
+        "U_w_m2k": {"min": 30, "max": 50, "recommended": 40},
+        "tau_residence_s": {"min": 1800, "max": 10800, "notes": "30-180 min typical"}
+      }
+    },
+    {
+      "ref_id": "ref_sludge_yields_slow_pyrolysis",
+      "authors": ["Fonts, I.", "Azuara, M.", "Gea, G.", "Murillo, M.B."],
+      "title": "Study of the pyrolysis liquids obtained from different sewage sludge",
+      "journal": "Journal of Analytical and Applied Pyrolysis",
+      "year": 2009,
+      "volume": "85",
+      "pages": "184-191",
+      "doi": "10.1016/j.jaap.2008.11.003",
+      "notes": "Sludge slow pyrolysis ~500°C: char 0.35-0.55 kg/kg TDS, gas energy 2.5-4.5 MJ/kg TDS.",
+      "applicable_to": ["sludge_yields", "char_yield", "syngas_energy"],
+      "parameter_ranges": {
+        "yield_char": {"min": 0.35, "max": 0.55, "recommended": 0.45},
+        "yield_gas_energy_MJ_kg": {"min": 2.5, "max": 4.5, "recommended": 3.5}
+      }
+    },
+    {
+      "ref_id": "ref_conversion_pathogen_destruction",
+      "authors": ["Bridle, T.R.", "Pritchard, D."],
+      "title": "Energy and nutrient recovery from sewage sludge via pyrolysis",
+      "journal": "Water Science and Technology",
+      "year": 2004,
+      "volume": "50",
+      "pages": "169-175",
+      "doi": "10.2166/wst.2004.0548",
+      "notes": "Conversion ≥90-95% required for pathogen destruction, odor elimination, char stability.",
+      "applicable_to": ["conversion_requirements", "X_min"],
+      "parameter_ranges": {
+        "X_min_sludge": {"min": 0.90, "max": 0.95, "recommended": 0.95},
+        "X_min_wood": {"min": 0.85, "max": 0.90, "recommended": 0.85}
+      }
+    }
+  ],
+  "last_updated": "2026-02-05",
+  "notes": "This registry must be updated whenever new literature sources are used. CI should fail if validated=False and source_refs=[]."
+}

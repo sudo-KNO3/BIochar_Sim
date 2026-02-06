@@ -1,0 +1,15 @@
+{
+  "vendor_id": "dew_001",
+  "packet_hash": "1ee87b8d691d",
+  "validation_task": "dewatering_params_validated",
+  "evidence_type": "bench_test",
+  "results": {
+    "cake_ts_fraction": 0.21,
+    "solids_capture": 0.94,
+    "polymer_kg_per_tds": 5.2,
+    "power_kwh_per_m3": 2.3
+  },
+  "submitted_at": "2026-02-05T09:52:28.927108",
+  "notes": "",
+  "_raw_data": "{\"packet_hash\": \"1ee87b8d691d\", \"validation_task\": \"dewatering_params_validated\", \"evidence_type\": \"bench_test\", \"results\": {\"cake_ts_fraction\": 0.21, \"solids_capture\": 0.94, \"polymer_kg_per_tds\": 5.2, \"power_kwh_per_m3\": 2.3}}"
+}

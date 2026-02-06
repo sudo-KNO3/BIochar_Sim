@@ -1,0 +1,885 @@
+# AI Code Review Request: Biochar_Sim Session Summary
+
+## METADATA
+- **Date**: 2026-02-06
+- **Workspace**: `C:\Users\kgalliford\Documents\Biochar_Sim`
+- **Python Version**: 3.13.3
+- **Test Status**: 478/478 passing (10 test files, zero regressions)
+- **Session Duration**: Extended multi-phase implementation
+- **Venv**: `C:/Users/kgalliford/Documents/Biochar_Sim/.venv/Scripts/python.exe`
+
+---
+
+## EXECUTIVE SUMMARY
+
+This session built the complete facility design, geometry, and integration layer for a 
+septage-to-biochar conversion system with two deployment modes:
+1. **Product Mode**: Owner-operator unit (1-3 trucks/day, centrate haul-off, 14×8×5.5m envelope)
+2. **Hub Mode**: 9-5 light-ops facility (12-15 trucks/day, permitted discharge, 30×18×7.5m envelope)
+
+### Key Deliverables (Cumulative)
+- Facility design module with canonical equipment lists and operating modes
+- Off-spec load handling parameters (GAP-002 resolved)
+- Vendor follow-up email automation for overnight operation questions
+- **GAP-004 Overnight Mode Validation Pipeline** (DRL-4 blocking until ≥2 vendors)
+- **Facility Geometry Module** (XYZ bounding box layout system with 4 validation gates)
+- **Value-add pathway analysis** with biochar revenue tiers, tipping fee modeling
+- **Hub optimization** with labor scaling, throughput modeling, and sensitivity analysis
+- **Vendor cut-sheet reconciliation pipeline** (conservative → vendor-validated envelopes)
+- **Overnight ↔ geometry bridge** (hot zone exclusion scaled by overnight mode)
+- **GATE-04 programmatic enforcement** (Unattended Safety wired to overnight CI)
+- **Full module exports** from `septage_model.artifacts` for both facility modules
+
+---
+
+## FILES CREATED
+
+### 1. `septage_model/artifacts/facility_design.py`
+**Purpose**: Canonical equipment lists, operating modes, best practices, and design gap tracking.
+
+**Data Structures**:
+```python
+class DeploymentMode(Enum):
+    PRODUCT = "product"
+    HUB = "hub"
+
+class Subsystem(Enum):
+    RECEIVING, STORAGE, DEWATERING, CAKE_HANDLING, 
+    PYROLYSIS, CHAR_HANDLING, UTILITIES, SITE_SYSTEMS, COMPLIANCE
+
+class OperatingPhase(Enum):
+    STARTUP, NORMAL_DAY, END_OF_DAY, OVERNIGHT, 
+    MORNING_RESTART, SHUTDOWN, FAILURE_HANDLING
+
+class NightMode(Enum):
+    HOT_HOLD, CONTROLLED_COOLDOWN, INERT_PURGE, FULL_SHUTDOWN
+
+class CentrateDisposition(Enum):
+    LOCAL_DISCHARGE, HAUL_OFF, LAGOON
+
+@dataclass(frozen=True)
+class EquipmentItem:
+    tag: str                    # e.g., "TK-101"
+    name: str
+    subsystem: Subsystem
+    description: str
+    sizing_basis: str
+    owner_serviceable: bool = True
+    spare_required: bool = False
+    winterization_required: bool = False
+    notes: Optional[str] = None
+
+@dataclass(frozen=True)
+class BestPractice:
+    id: str
+    subsystem: Subsystem
+    requirement: str
+    rationale: str
+    failure_if_skipped: str
+
+@dataclass(frozen=True)
+class OperatingModeStep:
+    sequence: int
+    action: str
+    responsible: str  # "operator" | "auto" | "vendor"
+    verification: Optional[str] = None
+    notes: Optional[str] = None
+
+@dataclass(frozen=True)
+class OperatingModeSpec:
+    mode: DeploymentMode
+    phase: OperatingPhase
+    description: str
+    steps: Tuple[OperatingModeStep, ...]
+    duration_typical: Optional[str] = None
+    triggers: Optional[Tuple[str, ...]] = None
+    safe_state_if_failed: Optional[str] = None
+
+@dataclass(frozen=True)
+class SiteConceptGate:
+    id: str
+    name: str
+    question: str
+    applies_to: Tuple[DeploymentMode, ...]
+    failure_consequence: str
+
+@dataclass
+class DesignGap:
+    id: str
+    category: str
+    description: str
+    current_state: str
+    required_for_buildable: str
+    priority: Literal["critical", "high", "medium", "low"]
+    resolution_path: str
+```
+
+**Equipment Counts**:
+- Product Mode: 25 items across 7 subsystems
+- Hub Mode: 21 items across 9 subsystems
+
+**Best Practices**: 12 rules (BP-001 through BP-012)
+
+**Site Concept Gates**: 8 gates (GATE-01 through GATE-08)
+
+**Design Gaps**: 7 tracked, 1 resolved (GAP-002)
+
+**CLI Commands**:
+```
+python -m septage_model.artifacts.facility_design equipment-product
+python -m septage_model.artifacts.facility_design equipment-hub
+python -m septage_model.artifacts.facility_design modes-product
+python -m septage_model.artifacts.facility_design modes-hub
+python -m septage_model.artifacts.facility_design gates
+python -m septage_model.artifacts.facility_design gaps
+python -m septage_model.artifacts.facility_design best-practices
+```
+
+---
+
+### 2. `septage_model/artifacts/schemas/overnight_response_schema.json`
+**Purpose**: JSON schema for structured vendor response intake.
+
+**Schema Properties**:
+```json
+{
+  "required": ["vendor_id", "packet_hash", "date_received"],
+  "properties": {
+    "vendor_id": { "type": "string" },
+    "packet_hash": { "type": "string", "pattern": "^[a-f0-9]{12}$" },
+    "date_received": { "type": "string", "format": "date" },
+    "hold_mode": {
+      "properties": {
+        "supported": { "type": "boolean" },
+        "type": { "enum": ["hot_hold", "controlled_cooldown", "inert_purge_required", "not_supported"] }
+      }
+    },
+    "overnight_thermal": {
+      "properties": {
+        "continuous_heat_required": { "type": "boolean" },
+        "min_temp_c": { "type": ["number", "null"] },
+        "risks_if_cooled": { "items": { "enum": ["tar_condensation", "plugging", "corrosion", "refractory_damage", "none"] } }
+      }
+    },
+    "auto_shutdown": {
+      "properties": {
+        "supported": { "type": "boolean" },
+        "philosophy": { "enum": ["alarm_only", "auto_rampdown", "auto_shutdown", "hybrid"] },
+        "triggers": { "type": "array" }
+      }
+    },
+    "restart": {
+      "properties": {
+        "time_hot_hold_hr": { "type": ["number", "null"] },
+        "time_warm_standby_hr": { "type": ["number", "null"] },
+        "time_cold_shutdown_hr": { "type": ["number", "null"] },
+        "operator_presence": { "enum": ["init_only", "continuous", "remote_ok"] }
+      }
+    },
+    "reference_installations": { "type": "array" }
+  }
+}
+```
+
+---
+
+## FILES MODIFIED
+
+### 1. `septage_model/artifacts/vendor_email.py`
+
+**Changes Made**:
+- Added `PYROLYSIS_VENDOR_IDS` constant (5 vendors, excludes airex_energy which is form_only)
+- Added `generate_pyrolysis_overnight_followup_email(vendor_id: str) -> VendorEmail`
+- Added `generate_all_pyrolysis_overnight_followups() -> List[VendorEmail]`
+- Extended CLI with `--followup-overnight` option
+
+**New Code Location**: Lines ~470-570 (before CLI entry point)
+
+**Bug Fixed**: Initially used `get_packet_hash()` but correct function name is `get_current_packet_hash()`. Fixed.
+
+**Vendor List**:
+```python
+PYROLYSIS_VENDOR_IDS = [
+    "klean_industries",
+    "pyreg",
+    # "airex_energy",  # form_only, skip
+    "biomass_controls",
+    "beston_group",
+    "aries_clean_technologies",
+]
+```
+
+**Email Sent To**:
+| Vendor | Email |
+|--------|-------|
+| Klean Industries | sales@kleanindustries.com |
+| PYREG GmbH | info@pyreg.de |
+| Biomass Controls | info@biomasscontrols.com |
+| Beston Group | official@bestongroup.com |
+| Aries Clean Technologies | info@ariescleantech.com |
+
+**Email Subject**: `Follow-Up Technical Questions - Unattended / Overnight Operation ({legal_name})`
+
+**Packet Hash**: `1ee87b8d691d`
+
+---
+
+### 2. `septage_model/core/parameters.py`
+
+**Changes Made**:
+- Added `OffSpecTrigger` enum
+- Added `OffSpecParams` dataclass
+- Integrated `off_spec` field into `ModelParameters`
+
+**New Code** (inserted after `BufferStorageParams`, before `DischargeParams`):
+
+```python
+class OffSpecTrigger(Enum):
+    """Triggers for off-spec load diversion."""
+    HIGH_FOG = "high_fog"
+    TRASH_HEAVY = "trash_heavy"
+    UNKNOWN_CHEMISTRY = "unknown_chemistry"
+    HIGH_TS = "high_ts"           # TS > 6%
+    LOW_TS = "low_ts"             # TS < 1%
+    ODOR_ALARM = "odor_alarm"
+    VISUAL_FLAG = "visual_flag"
+
+@dataclass(frozen=True)
+class OffSpecParams:
+    # Tank sizing
+    tank_volume_m3: float = 12.0           # Product: 1 truck
+    tank_volume_hub_m3: float = 24.0       # Hub: 2 trucks
+    
+    # Enabled triggers
+    enabled_triggers: Tuple[str, ...] = (
+        "high_fog", "trash_heavy", "unknown_chemistry", "visual_flag"
+    )
+    
+    # Thresholds
+    fog_threshold_mg_L: float = 500.0
+    ts_high_threshold: float = 0.06
+    ts_low_threshold: float = 0.01
+    
+    # Hold and disposition
+    max_hold_days: float = 7.0
+    haul_off_cost_per_m3: float = 85.0
+    
+    # Blend-back
+    blend_back_rate_fraction: float = 0.10
+    blend_back_requires_test: bool = True
+    
+    # Logging
+    notify_on_diversion: bool = True
+    log_all_decisions: bool = True
+    
+    def get_tank_volume(self, is_hub: bool = False) -> float:
+        return self.tank_volume_hub_m3 if is_hub else self.tank_volume_m3
+    
+    def is_trigger_enabled(self, trigger: str) -> bool:
+        return trigger in self.enabled_triggers
+```
+
+**Integration Point** (in `ModelParameters` class):
+```python
+buffer_storage: BufferStorageParams = field(default_factory=BufferStorageParams)
+off_spec: OffSpecParams = field(default_factory=OffSpecParams)  # NEW
+discharge: DischargeParams = field(default_factory=DischargeParams)
+```
+
+---
+
+### 3. `septage_model/core/__init__.py`
+
+**Changes Made**:
+- Added imports for `OffSpecParams` and `OffSpecTrigger`
+- Added both to `__all__` export list
+
+---
+
+### 4. `septage_model/artifacts/facility_design.py`
+
+**Changes Made**:
+- Updated GAP-002 status from "critical" to "medium" (resolved)
+- Updated `current_state` field to indicate resolution
+
+---
+
+## DESIGN ANCHORS (LOCKED)
+
+| Parameter | Product Mode | Hub Mode |
+|-----------|--------------|----------|
+| Receiving window | Flexible (owner schedule) | 08:00-16:00 |
+| Peak trucks/day | 1-3 | 12-15 |
+| Centrate disposition | Haul-off to WWTP | Local discharge (Mon-Fri 08:00-16:00) |
+| EQ tank autonomy | 3 days | 3 days |
+| Off-spec tank | 12 m3 (1 truck) | 24 m3 (2 trucks) |
+| Cake buffer | 48 hours | 24 hours |
+| Overnight mode | Shutdown (flexible) | Hot hold / controlled cooldown (vendor-dependent) |
+
+---
+
+## OPERATING MODE SPECIFICATIONS
+
+### Product Mode (4 modes)
+1. **NORMAL_DAY**: 8-12 hours, 7 steps
+2. **STARTUP**: 30-60 minutes, 6 steps
+3. **SHUTDOWN**: 30-60 minutes, 6 steps
+4. **FAILURE_HANDLING**: 4 steps with safe state definition
+
+### Hub Mode (5 modes)
+1. **NORMAL_DAY**: 8 hours, 6 steps
+2. **END_OF_DAY**: 30-45 minutes, 6 steps (mandatory sequence at 16:00)
+3. **OVERNIGHT**: 16 hours, 4 auto steps
+4. **MORNING_RESTART**: 30-60 min (hot) to 2-4 hr (cold), 6 steps
+5. **FAILURE_HANDLING**: 5 steps with escalation procedure
+
+---
+
+## BEST PRACTICES (12 RULES)
+
+| ID | Subsystem | Requirement | Failure If Skipped |
+|----|-----------|-------------|-------------------|
+| BP-001 | RECEIVING | Curbed containment to process sump | Environmental violation |
+| BP-002 | STORAGE | Dedicated off-spec tank | Process contamination |
+| BP-003 | STORAGE | High-high level interlock | Tank overflow |
+| BP-004 | RECEIVING | Hub traffic planning | Truck conflicts |
+| BP-005 | PYROLYSIS | Hub night-mode definition | Unsafe condition |
+| BP-006 | PYROLYSIS | Remote alarm escalation | Undetected failure |
+| BP-007 | CHAR_HANDLING | Char cooling before storage | Fire hazard |
+| BP-008 | STORAGE | Centrate sized for weekend | Forced shutdown |
+| BP-009 | UTILITIES | Winterization | Frozen damage |
+| BP-010 | DEWATERING | Polymer containment 110% | Slip hazard |
+| BP-011 | CAKE_HANDLING | Cake buffer hopper | Immediate stops |
+| BP-012 | SITE_SYSTEMS | Hub odour control | Complaints/enforcement |
+
+---
+
+## DESIGN GAPS STATUS
+
+| ID | Category | Priority | Status |
+|----|----------|----------|--------|
+| GAP-001 | Logistics | HIGH | Open - Truck pad design needed |
+| GAP-002 | Storage | MEDIUM | **RESOLVED** - OffSpecParams implemented |
+| GAP-003 | Centrate | HIGH | Open - Haul-off logistics not parameterized |
+| GAP-004 | Night Mode | CRITICAL | **PLACEHOLDER IMPLEMENTED** - Awaiting ≥2 vendor responses |
+| GAP-005 | Serviceability | MEDIUM | Partially resolved - Equipment list has tags |
+| GAP-006 | Compliance | MEDIUM | Open - Sampling plan needed |
+| GAP-007 | Odour | HIGH | Open - Control strategy needed |
+
+---
+
+## GAP-004 OVERNIGHT MODE VALIDATION SYSTEM
+
+### Implemented Components
+
+**New Types in `septage_model/core/parameters.py`**:
+- `OvernightModeStatus` enum: UNKNOWN, PARTIAL, VALIDATED
+- `RestartBucket` enum: FAST (<1hr), MODERATE (1-4hr), SLOW (>4hr)
+- `VendorValidationPolicy` dataclass (dependency-injected, not hardcoded)
+- `OvernightMode` enum: UNKNOWN, HOLD, CONTROLLED_COOLDOWN, FULL_SHUTDOWN
+- `VendorOvernightData` dataclass (structured vendor response)
+- `OvernightModeParams` dataclass (blocks DRL-4 when status=UNKNOWN)
+- `validate_overnight_responses()` function (applies ≥2 consistent rule)
+
+**New Gate in `septage_model/ci/gates.py`**:
+- `overnight_mode_validation_gate(overnight_params, claimed_drl)` - blocks DRL-4+ when UNKNOWN
+
+### Validation Rules (Engineer-Grade)
+
+| Check | Requirement | Tolerance |
+|-------|-------------|-----------|
+| overnight_mode | Exact enum match | None |
+| restart_time | Bucketed comparison | <1hr / 1-4hr / >4hr |
+| thermal_hold | Boolean match | None |
+| restart_pct | Within tolerance | ±25% |
+
+### DRL Behavior
+
+| DRL Level | Behavior with Unvalidated |
+|-----------|---------------------------|
+| DRL-3 | Pass with warning, list in "Unvalidated Assumptions" |
+| DRL-4+ | **HARD BLOCK** unless ≥2 consistent vendors |
+
+### Pipeline (No Free-Text)
+
+```
+Raw Email / PDF / XLS
+        ↓
+VendorOvernightData (structured parsing)
+        ↓
+validate_overnight_responses(policy)
+        ↓
+OvernightModeParams (UNKNOWN/PARTIAL/VALIDATED)
+        ↓
+overnight_mode_validation_gate() → DRL-4 blocked if not VALIDATED
+```
+
+### New Tests: 22 passing
+
+- 1 vendor → PARTIAL, DRL-4 blocked
+- 2 vendors consistent → VALIDATED, DRL-4 allowed
+- 2 vendors inconsistent → PARTIAL (blocked), remediation message
+- Policy change (min_vendors=1) → validation passes without code change
+
+---
+
+## VENDOR EMAIL AUTOMATION
+
+### Emails Sent This Session
+- **Type**: Overnight operation follow-up
+- **Recipients**: 5 pyrolysis vendors
+- **Subject Pattern**: `Follow-Up Technical Questions - Unattended / Overnight Operation ({vendor_name})`
+- **Packet Hash**: `1ee87b8d691d`
+- **Dispatch Method**: Outlook COM automation via `win32com.client`
+
+### Questions Asked
+1. Unattended hold mode capability
+2. Alarm vs auto-shutdown philosophy
+3. Overnight thermal stability requirements
+4. Restart times (hot/warm/cold)
+5. Reference installations with daytime-only staffing
+
+---
+
+## TEST STATUS
+
+```
+478 passed in 0.39s (10 test files)
+```
+
+### Test Breakdown by File
+
+| File | Tests | Coverage Area |
+|------|-------|---------------|
+| test_ci_gates.py | 10 | CI gate pass/fail, DRL blocking |
+| test_decision_snapshot.py | 8 | Frozen state snapshots, DRL advancement |
+| test_design_physics.py | 24 | Physics constraints, reactor parameters |
+| test_facility_geometry.py | 81 | XYZ layout, bounding boxes, zones, 4 gates |
+| test_facility_integration.py | 71 | Vendor cut-sheet, overnight↔geometry, GATE-04, exports |
+| test_hub_optimization.py | 72 | Labor scaling, throughput, hub economics |
+| test_operating_envelope.py | 54 | Operating envelope constraints |
+| test_overnight_validation.py | 22 | Overnight mode validation pipeline |
+| test_pathway_scenarios.py | 108 | Value-add pathways, biochar tiers, tipping fees |
+| test_proof_suite.py | 28 | Core proof checklist A-F |
+
+---
+
+## LATEST ADDITIONS (This Session, Newest First)
+
+### Vendor Cut-Sheet Reconciliation Pipeline
+**Location**: `septage_model/artifacts/facility_geometry.py` lines 272-420
+
+Implements Rule R-2: transition from conservative envelopes to vendor-validated envelopes.
+
+**New Types**:
+```python
+@dataclass(frozen=True)
+class VendorCutSheetData:
+    vendor_id: str
+    model_number: str
+    skid_length_m: float         # Physical dims from cut-sheet
+    skid_width_m: float
+    skid_height_m: float
+    clearance_inlet_m: float     # Vendor-specified clearances
+    clearance_outlet_m: float
+    clearance_overhead_m: float
+    hot_zone_exclusion_m: float  # From vendor safety data
+    drawing_ref: str = ""
+    date_received: str = ""
+    def validate(self) -> List[str]: ...
+
+@dataclass(frozen=True)
+class CutSheetReconciliation:
+    vendor_id: str
+    model_number: str
+    conservative_envelope: ReactorEnvelopeParams
+    vendor_envelope: ReactorEnvelopeParams
+    delta_length_m: float        # vendor - conservative
+    delta_width_m: float
+    delta_height_m: float
+    delta_hot_zone_m: float
+    fits_conservative_footprint: bool   # Vendor ≤ conservative
+    requires_layout_revalidation: bool  # True if exceeds or hot zone grew
+    validation_issues: Tuple[str, ...] = ()
+```
+
+**Pipeline Function**:
+```python
+def derive_envelope_from_vendor_cut_sheet(
+    cut_sheet: VendorCutSheetData,
+    conservative_envelope: ReactorEnvelopeParams,
+) -> Tuple[ReactorEnvelopeParams, CutSheetReconciliation]:
+    """Vendor PDF/DWG → VendorCutSheetData → validated ReactorEnvelopeParams"""
+```
+
+**Logic**:
+1. Validate cut-sheet (positive dims, non-negative clearances)
+2. Build `ReactorEnvelopeParams(validated_by_vendor=True)`
+3. Compute deltas against conservative baseline
+4. Flag `requires_layout_revalidation` if vendor exceeds footprint or hot zone grew
+
+---
+
+### Overnight Mode ↔ Hot Zone Bridge (GAP-004 Integration)
+**Location**: `septage_model/artifacts/facility_geometry.py` lines 424-519
+
+Connects the overnight mode validation system to physical hot zone sizing.
+
+**Constants**:
+```python
+OVERNIGHT_HOT_ZONE_MULTIPLIERS = {
+    "hold": 1.0,                # Full exclusion — reactor at operating temp
+    "controlled_cooldown": 0.75, # Reduced but present — gradual cooling
+    "full_shutdown": 0.5,        # Minimal — only residual heat
+    "unknown": 1.0,              # Conservative default
+}
+```
+
+**Functions**:
+```python
+def get_overnight_hot_zone_exclusion(
+    base_hot_zone_m: float,
+    overnight_mode: str,
+    continuous_heat_required: bool = False,
+) -> float:
+    """Calculate mode-aware overnight hot zone exclusion.
+    If continuous_heat_required=True, always returns full base exclusion."""
+
+def validate_overnight_geometry(
+    equipment: Tuple[EquipmentPlacement, ...],
+    overnight_mode: str,
+    continuous_heat_required: bool = False,
+) -> LayoutGateResult:
+    """Gate: Verify hot zone clearances hold under overnight conditions.
+    Spatial counterpart to GATE-04 (Unattended Safety)."""
+```
+
+---
+
+### GATE-04 Programmatic Enforcement (Unattended Safety)
+**Location**: `septage_model/artifacts/facility_design.py` lines 1018-1170
+
+Bridges the declarative GATE-04 definition in SITE_CONCEPT_GATES with the 
+overnight mode validation pipeline. Hub-only gate.
+
+**New Types**:
+```python
+@dataclass
+class GateCheckResult:
+    gate_id: str
+    gate_name: str
+    passed: bool
+    details: str
+    remediation: Optional[str] = None
+```
+
+**Functions**:
+```python
+def check_gate04_unattended_safety(
+    overnight_mode: str,
+    overnight_status: str,      # unknown, partial, validated
+    shutdown_philosophy: str,   # alarm_only, auto_rampdown, auto_shutdown, hybrid
+    claimed_drl: int,
+    continuous_heat_required: bool = False,
+) -> GateCheckResult:
+    """DRL ≤ 3: pass (advisory). DRL 4+: BLOCK unless validated + philosophy defined."""
+
+def check_site_concept_gates_programmatic(
+    mode: DeploymentMode,
+    claimed_drl: int,
+    overnight_mode: str = "unknown",
+    overnight_status: str = "unknown",
+    shutdown_philosophy: str = "unknown",
+    continuous_heat_required: bool = False,
+) -> List[GateCheckResult]:
+    """Run all programmatically-checkable site concept gates.
+    Currently GATE-04 only. Others remain declarative checklists."""
+```
+
+**GATE-04 DRL Enforcement Rules**:
+
+| DRL | Behavior |
+|-----|----------|
+| ≤ 3 | Always passes (screening level, warnings emitted) |
+| 4+  | BLOCKS unless: overnight_status=validated AND shutdown_philosophy≠unknown AND overnight_mode≠unknown |
+| 4+  | Extra block if continuous_heat=True AND philosophy not in (auto_rampdown, auto_shutdown, hybrid) |
+
+---
+
+### Module Exports Update
+**Location**: `septage_model/artifacts/__init__.py`
+
+Both `facility_design` and `facility_geometry` are now fully exported from the artifacts package.
+
+**Name collision handling**: `DeploymentMode` and `Subsystem` exist in both modules and in `fmea.py`.
+Aliased as `FD_DeploymentMode`/`FD_Subsystem` (design) and `FG_DeploymentMode`/`FG_Subsystem` (geometry).
+
+**New exports added to `__all__`**:
+- From facility_design: `GateCheckResult`, `check_gate04_unattended_safety`, 
+  `check_site_concept_gates_programmatic`, `check_design_gaps`, all operating mode specs, 
+  equipment lists, gates, gaps, best practices, utility functions
+- From facility_geometry: `VendorCutSheetData`, `CutSheetReconciliation`, 
+  `derive_envelope_from_vendor_cut_sheet`, `OVERNIGHT_HOT_ZONE_MULTIPLIERS`, 
+  `get_overnight_hot_zone_exclusion`, `validate_overnight_geometry`, all layout types, 
+  constants, and validation gates
+
+---
+
+### Integration Test File
+**Location**: `tests/test_facility_integration.py` (71 tests, 8 classes)
+
+| Class | Tests | Coverage |
+|-------|-------|----------|
+| TestVendorCutSheetData | 8 | Validation, positive/negative dims, multi-error |
+| TestDeriveEnvelopeFromVendorCutSheet | 10 | Pipeline, deltas, fits/exceeds, hub/product, exact match |
+| TestOvernightHotZoneMultipliers | 9 | All modes, continuous heat override, bounds, unrecognized mode |
+| TestValidateOvernightGeometry | 8 | Real layouts both modes, failure case, empty equipment |
+| TestGate04UnattendedSafety | 14 | DRL screening vs blocking, philosophy combos, continuous heat |
+| TestSiteConceptGatesProgrammatic | 5 | Hub/product applicability, DRL behavior |
+| TestModuleExports | 12 | All new types importable, __all__ integrity, no regressions |
+| TestCrossModuleIntegration | 5 | Geometry↔design↔overnight consistency |
+
+---
+
+## COMPLETE FILE INVENTORY
+
+### Source Files (septage_model/)
+
+| Module | File | Purpose |
+|--------|------|---------|
+| core | parameters.py | All model parameters including OffSpec, Overnight, Kinetics |
+| core | balances.py | Mass/energy balances |
+| core | state.py | Simulation state |
+| core | utils.py | Utility functions |
+| core | pyrolysis_kinetics.py | Arrhenius kinetics |
+| core | thermal_feasibility.py | Thermal energy balance |
+| core | stream_pathways.py | Value-add stream pathways |
+| simulation | deterministic.py | Deterministic simulation runner |
+| analysis | sensitivity.py | Sensitivity analysis |
+| analysis | sizing.py | Equipment sizing |
+| analysis | pathway_scenarios.py | Pathway scenario modeling |
+| analysis | hub_optimization.py | Hub throughput and labor optimization |
+| analysis | physics_appendix.py | Physics documentation |
+| artifacts | facility_design.py | Equipment lists, modes, gates, gaps, GATE-04 enforcement |
+| artifacts | facility_geometry.py | XYZ layout, vendor cut-sheet pipeline, overnight bridge |
+| artifacts | fmea.py | Failure Mode and Effects Analysis |
+| artifacts | versioning.py | Artifact versioning |
+| artifacts | validation_tasks.py | Validation task tracking |
+| artifacts | vendor_packet.py | Vendor packet generation |
+| artifacts | vendor_registry.py | Vendor registry management |
+| artifacts | vendor_intake.py | Vendor submission intake |
+| artifacts | vendor_email.py | Automated vendor emails |
+| artifacts | vendor_inbox_monitor.py | Inbox monitoring for vendor responses |
+| artifacts | pathway_analysis.py | Pathway analysis artifacts |
+| artifacts | decision_snapshot.py | Decision snapshot freezing |
+| ci | gates.py | CI gates including overnight validation |
+| ci | design_readiness.py | Design readiness level assessment |
+
+---
+
+## POTENTIAL REVIEW CONCERNS
+
+### 1. Type Consistency
+- `OffSpecTrigger` is an Enum but `enabled_triggers` in `OffSpecParams` uses `Tuple[str, ...]` not `Tuple[OffSpecTrigger, ...]`
+- **Rationale**: Allows JSON serialization without enum conversion; `is_trigger_enabled()` accepts string
+
+### 2. Duplicate DeploymentMode/Subsystem Enums
+- `facility_design.py`, `facility_geometry.py`, and `fmea.py` each define their own `DeploymentMode`/`Subsystem`
+- **Handled**: Aliased imports in `__init__.py` (`FD_DeploymentMode`, `FG_DeploymentMode`)
+- **Status**: Semantically identical but separate — consider future consolidation
+
+### 3. Equipment Tag Consistency
+- Product mode: TK-101, TK-102, etc.
+- Hub mode: TK-201A, TK-201B, TK-202, etc.
+- **Rationale**: Intentional separation; hub uses 200-series tags
+
+### 4. Frozen Dataclass Mutability
+- `DesignGap` is NOT frozen (mutable) while most other dataclasses are frozen
+- **Rationale**: Allows updating status as gaps are resolved
+
+### 5. CLI Entry Point Pattern
+- Uses `sys.argv` directly instead of `argparse`
+- **Rationale**: Matches existing module patterns in codebase
+
+### 6. Conservative Envelope ≠ Equipment Placement
+- `PRODUCT_REACTOR_ENVELOPE` (6.0×2.5×5.0m) ≠ PY-101 placement (4.5×2.5×5.0m)
+- **Rationale**: Envelope is the *allowable maximum* for layout planning; actual equipment may be smaller
+- Tests verify equipment fits *within* envelope, not exact match
+
+### 7. `from __future__ import annotations` in facility_geometry.py
+- Added to resolve forward reference issue (functions defined before `EquipmentPlacement` class)
+- **Impact**: All type annotations in this module are now strings at runtime (PEP 563 behavior)
+
+---
+
+## IMPORTS DEPENDENCY CHAIN
+
+```
+septage_model.core.parameters
+    OffSpecTrigger (Enum)
+    OffSpecParams (dataclass)
+    ModelParameters.off_spec
+    OvernightModeStatus, OvernightMode, OvernightModeParams
+    VendorOvernightData, VendorValidationPolicy, RestartBucket
+    validate_overnight_responses
+
+septage_model.core.__init__
+    exports all core parameter types
+
+septage_model.artifacts.facility_design
+    DeploymentMode, Subsystem, OperatingPhase, NightMode, CentrateDisposition (Enums)
+    EquipmentItem, BestPractice, OperatingModeStep, OperatingModeSpec (dataclasses)
+    SiteConceptGate, DesignGap, GateCheckResult (dataclasses)
+    PRODUCT_MODE_EQUIPMENT (25 items), HUB_MODE_EQUIPMENT (21 items)
+    BEST_PRACTICES (12 items), SITE_CONCEPT_GATES (8 items), KNOWN_DESIGN_GAPS (7 items)
+    Operating mode specs: PRODUCT_NORMAL_DAY, PRODUCT_STARTUP, PRODUCT_SHUTDOWN,
+        PRODUCT_FAILURE_HANDLING, HUB_NORMAL_DAY, HUB_END_OF_DAY, HUB_OVERNIGHT,
+        HUB_MORNING_RESTART, HUB_FAILURE_HANDLING
+    Functions: get_equipment_list, get_operating_modes, get_applicable_gates,
+        get_best_practices_by_subsystem, check_design_gaps,
+        check_gate04_unattended_safety, check_site_concept_gates_programmatic,
+        generate_equipment_summary, generate_operating_mode_summary
+
+septage_model.artifacts.facility_geometry
+    DeploymentMode, Subsystem, ContainmentType, PullOutDirection (Enums)
+    BoundingBox, FacilityEnvelope, ReactorEnvelopeParams (core geometry)
+    TankGeometry, EquipmentPlacement, Zone, ContainmentArea (layout)
+    VendorCutSheetData, CutSheetReconciliation (vendor pipeline)
+    LayoutGateResult (gate result type)
+    PRODUCT_REACTOR_ENVELOPE, HUB_REACTOR_ENVELOPE (conservative envelopes)
+    PRODUCT_ENVELOPE (14×8×5.5m), HUB_ENVELOPE (30×18×7.5m)
+    PRODUCT_TANKS (3), HUB_TANKS (4)
+    PRODUCT_ZONES (6), HUB_ZONES (10)
+    PRODUCT_EQUIPMENT (6), HUB_EQUIPMENT (9)
+    OVERNIGHT_HOT_ZONE_MULTIPLIERS (dict)
+    Functions: derive_envelope_from_vendor_cut_sheet, get_overnight_hot_zone_exclusion,
+        validate_overnight_geometry, validate_facility_bounds, validate_clearance_overlap,
+        validate_hot_zone_exclusion, validate_containment_separation, run_layout_gates
+
+septage_model.artifacts.__init__
+    Re-exports everything from: fmea, versioning, validation_tasks, vendor_packet,
+        vendor_registry, vendor_intake, decision_snapshot, facility_design, facility_geometry
+
+septage_model.ci.gates
+    overnight_mode_validation_gate (DRL-4 blocking gate)
+
+septage_model.artifacts.vendor_email
+    generate_pyrolysis_overnight_followup_email()
+    generate_all_pyrolysis_overnight_followups()
+    PYROLYSIS_VENDOR_IDS (5 vendors)
+```
+
+---
+
+## DESIGN ANCHORS (LOCKED)
+
+| Parameter | Product Mode | Hub Mode |
+|-----------|--------------|----------|
+| Receiving window | Flexible (owner schedule) | 08:00-16:00 |
+| Peak trucks/day | 1-3 | 12-15 |
+| Centrate disposition | Haul-off to WWTP | Local discharge (Mon-Fri 08:00-16:00) |
+| EQ tank autonomy | 3 days | 3 days |
+| Off-spec tank | 12 m³ (1 truck) | 24 m³ (2 trucks) |
+| Cake buffer | 48 hours | 24 hours |
+| Overnight mode | Shutdown (flexible) | Hot hold / controlled cooldown (vendor-dependent) |
+| Facility envelope | 14×8×5.5m (616 m³) | 30×18×7.5m (4050 m³) |
+| Reactor envelope (conservative) | 6.0×2.5×5.0m | 9.0×3.0×6.0m |
+| Hot zone exclusion | 1.5m | 2.0m |
+
+---
+
+## DESIGN GAPS STATUS
+
+| ID | Category | Priority | Status |
+|----|----------|----------|--------|
+| GAP-001 | Logistics | HIGH | Open — Truck pad design needed |
+| GAP-002 | Storage | MEDIUM | **RESOLVED** — OffSpecParams implemented |
+| GAP-003 | Centrate | HIGH | Open — Haul-off logistics not parameterized |
+| GAP-004 | Night Mode | CRITICAL | **PIPELINE IMPLEMENTED** — Awaiting ≥2 vendor responses. Vendor cut-sheet intake, overnight↔geometry bridge, and GATE-04 enforcement all wired. |
+| GAP-005 | Serviceability | MEDIUM | Partially resolved — Equipment list has tags |
+| GAP-006 | Compliance | MEDIUM | Open — Sampling plan needed |
+| GAP-007 | Odour | HIGH | Open — Control strategy needed |
+
+---
+
+## SITE CONCEPT GATES STATUS
+
+| Gate | Name | Applies To | Programmatic? |
+|------|------|------------|---------------|
+| GATE-01 | Containment & Drainage | Both | No (declarative) |
+| GATE-02 | Centrate Disposition | Both | No (declarative) |
+| GATE-03 | Receiving Logistics | Hub | No (declarative) |
+| GATE-04 | Unattended Safety | Hub | **YES — check_gate04_unattended_safety()** |
+| GATE-05 | Winterization | Both | No (declarative) |
+| GATE-06 | Char Quality Assurance | Both | No (declarative) |
+| GATE-07 | Odour Management | Both | No (declarative) |
+| GATE-08 | Regulatory Permitting | Both | No (declarative) |
+
+---
+
+## VALIDATION COMMANDS
+
+```powershell
+# Run all tests (478 passing)
+.\.venv\Scripts\python.exe -m pytest tests/ -q --tb=short
+
+# Run specific test files
+.\.venv\Scripts\python.exe -m pytest tests/test_facility_integration.py -v  # 71 tests
+.\.venv\Scripts\python.exe -m pytest tests/test_facility_geometry.py -v     # 81 tests
+.\.venv\Scripts\python.exe -m pytest tests/test_hub_optimization.py -v      # 72 tests
+.\.venv\Scripts\python.exe -m pytest tests/test_pathway_scenarios.py -v     # 108 tests
+
+# Verify all new imports
+.\.venv\Scripts\python.exe -c "from septage_model.artifacts import VendorCutSheetData, derive_envelope_from_vendor_cut_sheet, validate_overnight_geometry, check_gate04_unattended_safety; print('All imports OK')"
+
+# Verify core imports
+.\.venv\Scripts\python.exe -c "from septage_model.core import OffSpecParams, OvernightModeParams, validate_overnight_responses; print('OK')"
+
+# Show design gaps
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_design gaps
+
+# Show hub equipment
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_design equipment-hub
+
+# Show site concept gates
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_design gates
+
+# Product mode layout report (all gates pass)
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_geometry layout-product
+
+# Hub mode layout report (all gates pass)
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_geometry layout-hub
+
+# ASCII plan views
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_geometry ascii-product
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_geometry ascii-hub
+
+# Run layout gates only
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_geometry gates-product
+.\.venv\Scripts\python.exe -m septage_model.artifacts.facility_geometry gates-hub
+
+# Generate overnight follow-up emails (dry run)
+.\.venv\Scripts\python.exe -m septage_model.artifacts.vendor_email --followup-overnight
+
+# Check vendor inbox
+.\.venv\Scripts\python.exe -m septage_model.artifacts.vendor_inbox_monitor --hours 24
+```
+
+---
+
+## WHAT'S NEXT (Waiting on External Input)
+
+1. **Vendor cut-sheet responses** → Feed into `derive_envelope_from_vendor_cut_sheet()` → 
+   Replace conservative envelopes → Re-run layout gates
+2. **≥2 consistent overnight responses** → Feed into `validate_overnight_responses()` → 
+   Lift DRL-4 block → GATE-04 passes programmatically
+3. **GAP-001**: Truck pad / traffic flow study (site-specific)
+4. **GAP-003**: Product centrate haul-off parameterization
+5. **GAP-007**: Odour control basis of design
+6. **Remaining gates**: GATE-01 through GATE-08 (except GATE-04) await human checklist completion
+
+No more optimization or speculative engineering until vendor data arrives.
+
+---
+
+## END OF SUMMARY

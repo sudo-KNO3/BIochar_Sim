@@ -1,0 +1,99 @@
+{
+  "submission": {
+    "vendor_id": "dew_001",
+    "packet_hash": "1ee87b8d691d",
+    "validation_task": "dewatering_params_validated",
+    "evidence_type": "bench_test",
+    "results": {
+      "cake_ts_fraction": 0.21,
+      "solids_capture": 0.94,
+      "polymer_kg_per_tds": 5.2,
+      "power_kwh_per_m3": 2.3
+    },
+    "submitted_at": "2026-02-05T09:52:28.927108",
+    "notes": ""
+  },
+  "task_id": "dewatering_params_validated",
+  "task_name": "Dewatering Performance Validation",
+  "vendor_id": "dew_001",
+  "vendor_name": "Dewatering Systems Inc.",
+  "parameter_results": [
+    {
+      "parameter": "cake_ts_fraction",
+      "description": "Cake total solids fraction (dry basis)",
+      "expected": 0.2,
+      "range": [
+        0.18,
+        0.25
+      ],
+      "tolerance_pct": 15,
+      "unit": "fraction",
+      "criteria_version": "v1.0",
+      "measured": 0.21,
+      "result": "pass",
+      "deviation_pct": 5.0,
+      "notes": "Within acceptable range"
+    },
+    {
+      "parameter": "solids_capture",
+      "description": "Solids capture efficiency",
+      "expected": 0.95,
+      "range": [
+        0.9,
+        1.0
+      ],
+      "tolerance_pct": 5,
+      "unit": "fraction",
+      "criteria_version": "v1.0",
+      "measured": 0.94,
+      "result": "pass",
+      "deviation_pct": 1.1,
+      "notes": "Within acceptable range"
+    },
+    {
+      "parameter": "polymer_kg_per_tds",
+      "description": "Polymer consumption per tonne dry solids",
+      "expected": 5.0,
+      "range": [
+        3.0,
+        8.0
+      ],
+      "tolerance_pct": 30,
+      "unit": "kg/TDS",
+      "criteria_version": "v1.0",
+      "measured": 5.2,
+      "result": "pass",
+      "deviation_pct": 4.0,
+      "notes": "Within acceptable range"
+    },
+    {
+      "parameter": "power_kwh_per_m3",
+      "description": "Power consumption per cubic meter processed",
+      "expected": 2.0,
+      "range": [
+        1.0,
+        4.0
+      ],
+      "tolerance_pct": 50,
+      "unit": "kWh/m\u00b3",
+      "criteria_version": "v1.0",
+      "measured": 2.3,
+      "result": "pass",
+      "deviation_pct": 15.0,
+      "notes": "Within acceptable range"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "critical": 0,
+    "missing": 0,
+    "total": 4
+  },
+  "overall_result": "pass",
+  "decision": "accept_vendor",
+  "decision_rationale": "All parameters within acceptable ranges. Vendor equipment meets requirements.",
+  "drl_impact": "Task 'dewatering_params_validated' can be marked VALIDATED. If all DRL-4 tasks are validated, DRL advances.",
+  "criteria_version": "v1.0",
+  "generated_at": "2026-02-05T09:52:28.927400"
+}
