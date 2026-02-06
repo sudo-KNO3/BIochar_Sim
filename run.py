@@ -16,10 +16,6 @@ Examples:
 
 import argparse
 import sys
-from pathlib import Path
-
-# Add package to path
-sys.path.insert(0, str(Path(__file__).parent))
 
 from septage_model import (
     run_stage1,

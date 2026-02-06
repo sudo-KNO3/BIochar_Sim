@@ -1,5 +1,6 @@
-# Septage-to-Biochar Simulation - Python Dependencies
-# Install with: pip install -r requirements.txt
+# SECONDARY — canonical dependencies live in pyproject.toml
+# This file is kept for convenience: pip install -r requirements.txt
+# Preferred install: pip install -e ".[dev]"
 
 # Core Scientific Computing
 numpy>=1.24.0

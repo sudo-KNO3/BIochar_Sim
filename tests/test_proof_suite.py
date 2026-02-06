@@ -11,10 +11,7 @@ Run with: pytest tests/test_proof_suite.py -v
 """
 
 import pytest
-import sys
 import math
-
-sys.path.insert(0, '.')
 
 from septage_model.core.parameters import (
     create_option_b_scenario,
